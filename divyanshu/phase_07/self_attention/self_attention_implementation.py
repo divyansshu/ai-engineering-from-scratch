@@ -50,10 +50,9 @@ V = X @ w_v
 # print(f'Key matrix:\n {K}')
 # print(f'Value matrix:\n {V}')
 
-def scaled_dot_product_attention(Q, K, V):
+def scaled_dot_product_attention(Q, K, V, causal_matrix: np.ndarray | None = None):
     dk = Q.shape[-1]
-    scores = Q @ K.T / np.sqrt(dk)
-    # print("scores in scaled dot product attention function: ", scores)
+    scores = (Q @ K.T / np.sqrt(dk)) + causal_matrix
     weights = softmax_fn(scores)
     output = weights @ V
     return output, weights
@@ -73,7 +72,8 @@ class SelfAttention:
         Q = X @ self.Wq
         K = X @ self.Wk
         V = X @ self.Wv
-        output, weights = scaled_dot_product_attention(Q, K, V)
+        causal_matrix = np.triu(np.full((X.shape[0], X.shape[0]), -np.inf), k=1)
+        output, weights = scaled_dot_product_attention(Q, K, V, causal_matrix)
         return output, weights
 
 
@@ -88,6 +88,8 @@ X = rng.normal(0, 1, (n_tokens, d_model)) # 6 x 8
 
 attn = SelfAttention(d_model, dk, dv, seed=42)
 output, weights = attn.forward(X)
+print('\n output: \n', output)
+print('\n')
 
 
 print('Attention weights (each row: where that token looks):\n')
@@ -103,22 +105,5 @@ for i, token in enumerate(sentence):
         print(f"{w:6.3f}", end="")
     print()
 
-
-def ascii_heatmap(weights, tokens, chars=" ░▒▓█"):
-    n = len(tokens)
-    print(f'\n{'':>6}', end="")
-    for t in tokens:
-        print(f'{t:>6}', end="")
-    print()
-    
-    for i in range(n):
-        print(f'{tokens[i]:>6}', end="")
-        for j in range(n):
-            level = int(weights[i][j] * (len(chars) - 1) / weights.max())
-            level = min(level, len(chars) - 1)
-            print(f"{'  ' + chars[level] + '  '}", end="")
-        print()
-
-ascii_heatmap(weights, sentence)
         
     
